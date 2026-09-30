@@ -89,6 +89,21 @@ test("workout: every exercise has a full guide; level picks suitable moves", () 
   assert.equal(buildWorkoutPlan("lose", "moderate").days[0].exercises[0].prescription.reps, "12–15");
 });
 
+test("every exercise has an animated demo with labelled step poses", () => {
+  const MOVES = require("../public/moves.js");
+  const point = (p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
+  for (const id of Object.keys(EXERCISES)) {
+    const mv = MOVES[id];
+    assert.ok(mv, `${id} has no demo`);
+    assert.ok(mv.frames.length >= 2, `${id} needs at least 2 poses`);
+    for (const f of mv.frames) {
+      for (const k of ["n", "h", "hf", "hb", "ff", "fb"]) assert.ok(point(f[k]), `${id}: ${k}`);
+      assert.ok(typeof f.label === "string" && f.label.length > 3, `${id}: label`);
+    }
+  }
+  assert.deepEqual(Object.keys(MOVES).filter((k) => !EXERCISES[k]), [], "no demos for unknown exercises");
+});
+
 // ---------- API ----------
 let server, base;
 before(async () => {

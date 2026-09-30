@@ -4,7 +4,7 @@ A full-stack web app that turns a few details (height, weight, age, gender, goal
 
 - **Safe daily calorie and macro targets**: protein, carbs and fats, shown as progress rings.
 - **A 7-day meal plan**: 4 meals a day, with portions scaled to your calories. It includes Pakistani home-style dishes and has a vegetarian option.
-- **A weekly workout routine**: every exercise card shows sets, reps, rest, tempo and effort, plus step-by-step instructions, form cues, common mistakes, and easier/harder versions.
+- **A weekly workout routine**: a "Your week" overview plus 36 exercises (squats, jumping jacks, high knees, push-ups, planks, yoga poses and more). Every card has an **animated demo figure**, step-by-step pose pictures, sets, reps, rest, tempo and effort, written instructions, form cues, common mistakes, and easier/harder versions.
 
 It has a dark, responsive design built with Tailwind CSS, and runs on Node.js and Express.
 

@@ -317,11 +317,147 @@
     return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
   };
 
+  // ---------- Animated exercise demos ----------
+  // A stick figure posed from public/moves.js. Elbows and knees are solved with two-bone IK, then SVG <animate>
+  // morphs smoothly between the key poses. Reduced-motion users get the still pose pictures only.
+  const MOVES = window.FITPLAN_MOVES || {};
+  const SEG = { ua: 24, fa: 22, th: 30, sh: 30 };
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const r1 = (v) => Math.round(v * 10) / 10;
+
+  function ik(a, b, l1, l2, hint) {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const dist = Math.hypot(dx, dy) || 1;
+    const d = Math.min(Math.max(dist, 1), l1 + l2 - 0.5);
+    const ang = Math.acos(Math.max(-1, Math.min(1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d))));
+    const ux = dx / dist, uy = dy / dist, c = Math.cos(ang), s = Math.sin(ang);
+    const p1 = [a[0] + l1 * (ux * c - uy * s), a[1] + l1 * (ux * s + uy * c)];
+    const p2 = [a[0] + l1 * (ux * c + uy * s), a[1] + l1 * (-ux * s + uy * c)];
+    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    const score = (p) => (p[0] - mx) * hint[0] + (p[1] - my) * hint[1];
+    return score(p1) >= score(p2) ? p1 : p2;
+  }
+
+  function pose(f, mv) {
+    const ei = f.ei || mv.ei || [-1, 0.3], ki = f.ki || mv.ki || [1, 0];
+    const g = {
+      n: f.n, h: f.h, hf: f.hf, hb: f.hb, ff: f.ff, fb: f.fb,
+      ef: f.ef || ik(f.n, f.hf, SEG.ua, SEG.fa, f.efi || ei),
+      eb: f.eb || ik(f.n, f.hb, SEG.ua, SEG.fa, f.ebi || ei),
+      kf: f.kf || ik(f.h, f.ff, SEG.th, SEG.sh, f.kfi || ki),
+      kb: f.kb || ik(f.h, f.fb, SEG.th, SEG.sh, f.kbi || ki),
+    };
+    const tx = f.n[0] - f.h[0], ty = f.n[1] - f.h[1], tl = Math.hypot(tx, ty) || 1;
+    const ux = tx / tl, uy = ty / tl;
+    g.head = f.hd || [f.n[0] + ux * 12, f.n[1] + uy * 12];
+    const sp = f.sp || 0; // spine curve: control point pushed perpendicular to the torso
+    g.tc = [(f.n[0] + f.h[0]) / 2 + uy * sp, (f.n[1] + f.h[1]) / 2 - ux * sp];
+    g.rope = f.rope;
+    return g;
+  }
+  const P = (p) => `${r1(p[0])} ${r1(p[1])}`;
+  const limbs = (g, side) => (side === "b" ? `M${P(g.n)}L${P(g.eb)}L${P(g.hb)}M${P(g.h)}L${P(g.kb)}L${P(g.fb)}` : `M${P(g.n)}L${P(g.ef)}L${P(g.hf)}M${P(g.h)}L${P(g.kf)}L${P(g.ff)}`);
+  const torso = (g) => `M${P(g.h)}Q${P(g.tc)} ${P(g.n)}`;
+
+  function staticProps(mv) {
+    return (mv.props || []).map((p) => {
+      if (p.t === "mat") return `<rect x="8" y="150" width="184" height="4" rx="2" fill="rgba(52,211,153,.35)"/>`;
+      if (p.t === "bench") return `<g fill="#475569"><rect x="${p.x}" y="${p.y}" width="${p.w}" height="7" rx="2"/><rect x="${p.x + 6}" y="${p.y + 7}" width="5" height="${150 - p.y - 7}"/><rect x="${p.x + p.w - 11}" y="${p.y + 7}" width="5" height="${150 - p.y - 7}"/></g>`;
+      if (p.t === "seat") return `<g fill="#475569"><rect x="${p.x - 16}" y="${p.y}" width="32" height="7" rx="2"/><rect x="${p.x - 3}" y="${p.y + 7}" width="6" height="${150 - p.y - 7}"/></g>`;
+      if (p.t === "bike") return `<g fill="none" stroke="#64748b" stroke-width="3" stroke-linecap="round"><circle cx="54" cy="132" r="18"/><circle cx="156" cy="132" r="18"/><path d="M54 132 L100 128 L88 100 M100 128 L142 92 L88 100 M142 92 L156 132 M136 78 L146 80 L142 92 M80 98 L96 98"/><circle cx="100" cy="128" r="3" fill="#64748b"/></g>`;
+      return "";
+    }).join("");
+  }
+
+  // Everything that moves, as SVG fragments; `anim(values)` adds the animation (or nothing for a still).
+  function movingParts(mv, geoms, anim) {
+    const g0 = geoms[0];
+    const back = mv.front ? "#e2e8f0" : "#94a3b8";
+    let out = `<path d="${limbs(g0, "b")}" fill="none" stroke="${back}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">${anim("d", geoms.map((g) => limbs(g, "b")))}</path>`;
+    out += `<path d="${torso(g0)}" fill="none" stroke="#f8fafc" stroke-width="9" stroke-linecap="round">${anim("d", geoms.map(torso))}</path>`;
+    out += `<circle r="10" cx="${r1(g0.head[0])}" cy="${r1(g0.head[1])}" fill="#f8fafc">${anim("cx", geoms.map((g) => r1(g.head[0])))}${anim("cy", geoms.map((g) => r1(g.head[1])))}</circle>`;
+    out += `<path d="${limbs(g0, "f")}" fill="none" stroke="#f8fafc" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">${anim("d", geoms.map((g) => limbs(g, "f")))}</path>`;
+    for (const p of mv.props || []) {
+      if (p.t === "db" || p.t === "kb") {
+        const hands = p.t === "kb" ? ["mid"] : p.only === "front" ? ["hf"] : ["hb", "hf"];
+        for (const k of hands) {
+          const at = (g) => (k === "mid" ? [(g.hf[0] + g.hb[0]) / 2, (g.hf[1] + g.hb[1]) / 2 + 4] : g[k]);
+          const r = p.t === "kb" || p.big ? 8 : 6;
+          out += `<circle r="${r}" cx="${r1(at(g0)[0])}" cy="${r1(at(g0)[1])}" fill="#1e293b" stroke="#34d399" stroke-width="3">${anim("cx", geoms.map((g) => r1(at(g)[0])))}${anim("cy", geoms.map((g) => r1(at(g)[1])))}</circle>`;
+        }
+      }
+      if (p.t === "plate") {
+        const at = (g) => [(g.hf[0] + g.hb[0]) / 2, (g.hf[1] + g.hb[1]) / 2];
+        out += `<circle r="15" cx="${r1(at(g0)[0])}" cy="${r1(at(g0)[1])}" fill="none" stroke="#34d399" stroke-width="5">${anim("cx", geoms.map((g) => r1(at(g)[0])))}${anim("cy", geoms.map((g) => r1(at(g)[1])))}</circle>`;
+      }
+      if (p.t === "cable") {
+        out += `<line x1="${p.from[0]}" y1="${p.from[1]}" x2="${r1(g0.hf[0])}" y2="${r1(g0.hf[1])}" stroke="#34d399" stroke-width="2">${anim("x2", geoms.map((g) => r1(g.hf[0])))}${anim("y2", geoms.map((g) => r1(g.hf[1])))}</line>`;
+      }
+      if (p.t === "towel") {
+        const d = (g) => `M${P(g.hf)}L${P(g.ff)}`;
+        out += `<path d="${d(g0)}" stroke="#34d399" stroke-width="3" stroke-linecap="round">${anim("d", geoms.map(d))}</path>`;
+      }
+      if (p.t === "rope") {
+        const d = (g) => `M${P(g.hb)}Q${P(g.rope)} ${P(g.hf)}`;
+        out += `<path d="${d(g0)}" fill="none" stroke="#fbbf24" stroke-width="2.5">${anim("d", geoms.map(d))}</path>`;
+      }
+    }
+    return out;
+  }
+
+  const FLOOR = `<line x1="0" y1="151" x2="200" y2="151" stroke="rgba(255,255,255,.14)" stroke-width="2"/>`;
+
+  function demoSVG(id) {
+    const mv = MOVES[id];
+    if (!mv) return "";
+    const frames = mv.frames;
+    // Timeline: hold on each pose, then glide to the next; loop back to the first.
+    const seq = [], times = [];
+    let t = 0;
+    for (const f of frames) {
+      seq.push(f); times.push(t); t += f.hold ?? 0.35;
+      seq.push(f); times.push(t); t += 1;
+    }
+    seq.push(frames[0]); times.push(t);
+    const geoms = seq.map((f) => pose(f, mv));
+    const dur = r1(t * (mv.dur ?? 0.9));
+    const keyTimes = times.map((x) => (x / t).toFixed(3)).join(";");
+    const splines = Array(seq.length - 1).fill("0.45 0 0.55 1").join(";");
+    const anim = reduceMotion ? () => "" : (attr, values) => `<animate attributeName="${attr}" dur="${dur}s" repeatCount="indefinite" calcMode="spline" keyTimes="${keyTimes}" keySplines="${splines}" values="${values.join(";")}"/>`;
+    return `<svg viewBox="0 -16 200 176" class="h-full w-full" role="img" aria-label="Animated demonstration: ${esc(frames.map((f) => f.label).join(", then "))}">${FLOOR}${staticProps(mv)}${movingParts(mv, geoms, anim)}</svg>`;
+  }
+
+  function stepFrames(id) {
+    const mv = MOVES[id];
+    if (!mv) return "";
+    return `<ol class="grid gap-2" style="grid-template-columns:repeat(${mv.frames.length},minmax(0,1fr))">${mv.frames
+      .map((f, i) => `<li class="rounded-lg bg-ink-950/70 p-1.5 text-center">
+        <svg viewBox="0 -16 200 176" class="mx-auto h-16 w-full" aria-hidden="true">${FLOOR}${staticProps(mv)}${movingParts(mv, [pose(f, mv)], () => "")}</svg>
+        <p class="mt-1 text-[11px] leading-tight text-slate-300"><span class="font-bold text-emerald-400">${i + 1}.</span> ${esc(f.label)}</p></li>`)
+      .join("")}</ol>`;
+  }
+
+  function weekOverview(w) {
+    return `
+      <div class="flex items-baseline justify-between gap-3">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-300">Your week</h3>
+        <p class="text-xs text-slate-400">${w.level} · ${w.trainingDays} training days · tap a day</p>
+      </div>
+      <div class="scrollbar-none -mx-1 mt-2 flex gap-2 overflow-x-auto px-1 pb-1 2xl:grid 2xl:grid-cols-7 2xl:overflow-visible" role="tablist" aria-label="Workout day">
+        ${w.days.map((d, i) => `
+          <button type="button" role="tab" data-day="${i}" aria-selected="${i === workoutDay}" class="day-pill flex min-w-[132px] flex-col gap-1 2xl:min-w-0">
+            <span class="flex items-center justify-between"><span class="font-bold text-white">${d.day.slice(0, 3)}</span><span aria-hidden="true">${TYPE_ICON[d.type]}</span></span>
+            <span class="line-clamp-2 min-h-[2.5em] text-xs font-medium leading-tight text-slate-300">${esc(d.title)}</span>
+            <span class="text-[11px] text-slate-400">${d.type === "rest" ? "Rest · light walk" : `${d.durationMin} min · ${d.exercises.length} moves`}</span>
+          </button>`).join("")}
+      </div>`;
+  }
+
   function workoutPanel() {
     const w = plan.workoutPlan;
     const d = w.days[workoutDay];
     return `
-      ${dayStrip(w.days, workoutDay, (x) => `${TYPE_ICON[x.type]} ${x.type === "rest" ? "Rest" : x.durationMin + " min"}`)}
+      ${weekOverview(w)}
       <div class="mt-4 rounded-2xl bg-gradient-to-br from-ink-800 to-ink-950 p-5">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -348,18 +484,22 @@
   function exerciseCard(e, i) {
     const c = CAT[e.category];
     const p = e.prescription;
-    const q = encodeURIComponent(e.imageQuery);
     return `
       <article class="reveal flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-ink-850" style="animation-delay:${i * 0.05}s">
-        <figure class="relative aspect-video overflow-hidden bg-ink-950">
-          <img class="ex-img h-full w-full object-cover transition duration-700" src="${placeholder(e.category)}" data-query="${esc(e.imageQuery)}" data-fallback="${esc(c.fallbackQuery)}"
-            data-src="/api/image?query=${q}" alt="${esc(e.name)}" loading="lazy" />
+        <figure class="ex-figure relative aspect-video overflow-hidden" style="background:linear-gradient(135deg, ${c.from}, ${c.to})">
+          <div class="ex-demo absolute inset-0 px-3 pt-6">${MOVES[e.id] ? demoSVG(e.id) : `<img class="h-full w-full object-cover" src="${placeholder(e.category)}" alt="" />`}</div>
+          <img class="ex-img absolute inset-0 hidden h-full w-full object-cover" data-query="${esc(e.imageQuery)}" data-fallback="${esc(c.fallbackQuery)}" alt="${esc(e.name)}" />
           <span class="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-bold backdrop-blur ${c.badge}">${c.label}</span>
           <span class="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-ink-950/80 text-xs font-bold text-white">${i + 1}</span>
+          <div class="view-toggle absolute bottom-2 left-2 hidden gap-1 rounded-full bg-black/60 p-0.5 text-[11px] font-semibold" role="group" aria-label="Show">
+            <button type="button" data-view="demo" aria-pressed="true" class="rounded-full px-2.5 py-0.5 text-white aria-pressed:bg-emerald-500 aria-pressed:text-ink-950">▶ Demo</button>
+            <button type="button" data-view="photo" aria-pressed="false" class="rounded-full px-2.5 py-0.5 text-white aria-pressed:bg-emerald-500 aria-pressed:text-ink-950">📷 Photo</button>
+          </div>
           <figcaption class="credit absolute bottom-2 right-2 hidden rounded bg-black/60 px-2 py-0.5 text-[10px] text-slate-200"></figcaption>
         </figure>
         <div class="flex flex-1 flex-col p-4">
           <h4 class="text-lg font-bold text-white">${esc(e.name)}</h4>
+          ${MOVES[e.id] ? `<div class="mt-3"><p class="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Step by step</p>${stepFrames(e.id)}</div>` : ""}
           <div class="mt-1.5 flex flex-wrap gap-1.5">${e.muscles.map((m) => `<span class="chip">${esc(m)}</span>`).join("")}</div>
           <p class="mt-2 text-xs text-slate-400">Equipment: ${esc(e.equipment)}</p>
           <dl class="mt-3 grid grid-cols-4 gap-1.5 text-center">
@@ -397,11 +537,22 @@
       pre.onload = () => {
         img.src = data.url;
         img.alt = data.alt || img.alt;
-        const cap = img.parentElement.querySelector(".credit");
-        cap.innerHTML = `Photo: <a class="underline" href="${esc(data.credit.link)}" target="_blank" rel="noopener">${esc(data.credit.name)}</a> / <a class="underline" href="${esc(data.unsplashLink)}" target="_blank" rel="noopener">Unsplash</a>`;
-        cap.classList.remove("hidden");
+        const fig = img.closest(".ex-figure");
+        fig.querySelector(".credit").innerHTML = `Photo: <a class="underline" href="${esc(data.credit.link)}" target="_blank" rel="noopener">${esc(data.credit.name)}</a> / <a class="underline" href="${esc(data.unsplashLink)}" target="_blank" rel="noopener">Unsplash</a>`;
+        fig.querySelector(".view-toggle").classList.replace("hidden", "flex"); // the animated demo stays the default view
       };
       pre.src = data.url;
     });
   }
+  // Demo / Photo switch on each card.
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest?.(".view-toggle button");
+    if (!btn) return;
+    const fig = btn.closest(".ex-figure");
+    const photo = btn.dataset.view === "photo";
+    fig.querySelectorAll(".view-toggle button").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+    fig.querySelector(".ex-img").classList.toggle("hidden", !photo);
+    fig.querySelector(".ex-demo").classList.toggle("hidden", photo);
+    fig.querySelector(".credit").classList.toggle("hidden", !photo);
+  });
 })();
