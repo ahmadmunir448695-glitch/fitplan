@@ -1,0 +1,52 @@
+/* Source for public/styles.css. After changing classes, run: npm run build:css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(16, 185, 129, 0.12), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(96, 165, 250, 0.1), transparent 60%),
+      #0b1120;
+  }
+  input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+}
+
+@layer components {
+  .input { @apply w-full rounded-xl border border-white/10 bg-ink-950 px-3.5 py-2.5 text-white placeholder-slate-600 outline-none transition focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20; }
+  .input.invalid { @apply border-rose-500/70 ring-2 ring-rose-500/20; }
+  .choice-pill { @apply relative cursor-pointer; }
+  .choice-pill span { @apply block rounded-lg px-2 py-1.5 text-center text-sm font-semibold text-slate-400 transition; }
+  .choice-pill input:checked + span { @apply bg-emerald-500 text-ink-950; }
+  .choice-pill input:focus-visible + span { @apply ring-2 ring-emerald-300; }
+  .goal-card { @apply relative flex cursor-pointer flex-col items-center gap-0.5 rounded-xl border border-white/10 bg-ink-950 px-2 py-3 text-center text-sm transition hover:border-white/20; }
+  .goal-card:has(input:checked) { @apply border-emerald-400 bg-emerald-500/10 shadow-glow; }
+  .goal-card:has(input:focus-visible) { @apply ring-2 ring-emerald-300; }
+  .unit-btn { @apply text-slate-400 transition; }
+  .unit-btn[aria-checked="true"] { @apply bg-ink-800 text-white; }
+  .tab { @apply flex-1 rounded-lg px-4 py-2.5 text-sm font-bold text-slate-400 transition hover:text-white sm:flex-none sm:px-6; }
+  .tab[aria-selected="true"] { @apply bg-emerald-500 text-ink-950 hover:text-ink-950; }
+  .day-pill { @apply shrink-0 rounded-xl border border-white/10 px-3.5 py-2 text-left text-sm transition hover:border-white/25; }
+  .day-pill[aria-selected="true"] { @apply border-emerald-400 bg-emerald-500/10; }
+  .card { @apply rounded-2xl border border-white/5 bg-ink-900/80 shadow-xl; }
+  .chip { @apply inline-flex items-center rounded-full bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-300; }
+}
+
+@layer utilities {
+  .ring-track { stroke: rgba(148, 163, 184, 0.15); }
+  .ring-bar { transition: stroke-dashoffset 1s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .reveal { animation: reveal 0.5s ease both; }
+  .shimmer { background: linear-gradient(110deg, #131c31 30%, #1b2540 50%, #131c31 70%) 0 0 / 250% 100%; animation: shimmer 1.4s linear infinite; }
+  details[open] .chev { transform: rotate(180deg); }
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+}
+
+@keyframes reveal { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes shimmer { to { background-position: -250% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .ring-bar, .reveal, .shimmer { transition: none; animation: none; }
+}

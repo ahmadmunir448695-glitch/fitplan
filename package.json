@@ -1,0 +1,24 @@
+{
+  "name": "fitness-planner",
+  "version": "1.0.0",
+  "description": "Daily fitness, diet planner and exercise guide: safe calorie targets, macros, a 7-day meal plan and a guided weekly workout.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "build:css": "tailwindcss -c tailwind.config.js -i src/styles.css -o public/styles.css --minify"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}

@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Environment (API keys)
+.env
+.env.*
+!.env.example
+
+# Logs and OS files
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
