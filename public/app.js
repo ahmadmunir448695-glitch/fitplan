@@ -159,12 +159,13 @@
         <div id="panel" role="tabpanel" class="p-3 sm:p-4"></div>
       </div>`;
     $$(".tab", dash).forEach((b) => b.addEventListener("click", () => ((tab = b.dataset.tab), renderPanel())));
-    dash.addEventListener("keydown", (e) => {
+    // Assigned (not added) so generating another plan doesn't stack up duplicate handlers.
+    dash.onkeydown = (e) => {
       if (!e.target.matches(".tab") || !["ArrowLeft", "ArrowRight"].includes(e.key)) return;
       tab = tab === "diet" ? "workout" : "diet";
       renderPanel();
       $(`#tab-${tab}`).focus();
-    });
+    };
     $("#loading").classList.add("hidden");
     dash.classList.remove("hidden");
     renderPanel();
