@@ -50,7 +50,17 @@ Without a key, the cards show built-in illustrations instead, so the app still w
 | `UNSPLASH_ACCESS_KEY` | Optional, for real exercise photos |
 | `CORS_ORIGIN` | Optional, a comma-separated list of sites allowed to call the API (default: any) |
 
-## Deploy (Render, Railway, etc.)
+## Free hosting on GitHub Pages
+
+The `docs/` folder is a ready-made static version of the app. The plan is worked out in the browser with the same code as the server, so it needs no server and no hosting bill.
+
+1. On GitHub, open the repo → **Settings** → **Pages**.
+2. Under **Build and deployment**, set **Source** to *Deploy from a branch*, **Branch** to `main`, and the folder to `/docs`. Click **Save**.
+3. After about a minute the site is live at `https://<your-username>.github.io/fitplan/`.
+
+After changing the app, run `npm run build:css && npm run build:pages`, then commit and push. The Pages version shows the animated exercise demos; Unsplash photos need the server version below, because the key must stay secret.
+
+## Deploy the full server (Render, Railway, etc.)
 
 - **Build command:** `npm install`
 - **Start command:** `npm start`
